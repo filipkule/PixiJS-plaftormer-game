@@ -1,5 +1,5 @@
-let app = new PIXI.Application({ width: 1280, height: 640 });
-document.body.appendChild(app.view);
+let app = new PIXI.Application({ width: 1280, height: 640 })
+document.body.appendChild(app.view)
 
 window.addEventListener('keydown', keyDown)
 window.addEventListener('keyup', keyUp)
@@ -8,67 +8,94 @@ app.stage.interactive = true
 app.stage.on('pointermove', movePlayer)
 
 const BOX_SIZE = 128
+const GRAVITY = 0.5
 
 let inputStore = {}
+let platforms = new Map()
+let currentPlatform = null
 
-let bottom = new PIXI.Graphics();
-bottom.beginFill(0x89CFF0);
-bottom.lineStyle(3, 0xcccccc, 1);
+let bottom = new PIXI.Graphics()
+bottom.beginFill(0x89CFF0)
+bottom.lineStyle(3, 0xcccccc, 1)
 bottom.drawRect(0, 620,
     1280,
     50
-);
-bottom.endFill();
-app.stage.addChild(bottom);
+)
+bottom.endFill()
+app.stage.addChild(bottom)
 
-let player = PIXI.Sprite.from('player.png');
-app.stage.addChild(player);
-player.x = app.view.width - 500
+let player = PIXI.Sprite.from('player.png')
+app.stage.addChild(player)
+player.x = app.view.width - 700
+player.currentGravity = GRAVITY
 
-let platform = new PIXI.Graphics();
-platform.beginFill(0xffffff);
-platform.lineStyle(3, 0xcccccc, 1);
-platform.drawRect(525, 300,
+let start = new PIXI.Graphics()
+start.beginFill(0xffffff)
+start.lineStyle(3, 0xcccccc, 1)
+start.drawRect(475, 500,
     250,
     40
-);
-platform.endFill();
+)
+start.endFill()
 
-app.stage.addChild(platform);
+app.stage.addChild(start)
+start.currentGravity = 0
+start.collided = false
+currentPlatform = start
+platforms.set(0, start)
 
-//working
 
-// const redSquare = new PIXI.Sprite(PIXI.Texture.WHITE);
-// redSquare.position.set(100, 100);
-// redSquare.width = 100;
-// redSquare.height = 100;
-// redSquare.tint = 0xFF0000;
-// redSquare.acceleration = new PIXI.Point(0);
-// redSquare.mass = 1;
-// redSquare.anchor.set(0.5)
-
-// app.stage.addChild(redSquare);
 
 function game() {
-    if(collisionDetection(bottom, platform)) {
-        app.stage.removeChild(platform) //TODO: here go through all the platforms and delete them 1 by one
-    }
-    if(collisionDetection(bottom, player)) {
+    if (collisionDetection(bottom, player)) {
         app.stage.removeChild(player) //TODO: game over, try again
     }
-    if (collisionDetection(player, platform)) {
-        debugger
-    } else {
-        player.y += 0.5
-        processUserInput()
-    }
+    platforms.forEach(platform => {
+        if (collisionDetection(player, platform)) {
+            platform.currentGravity = GRAVITY
+            currentPlatform = platform
+            generatePlatformsOnCollision(platform.collided)
+            platform.collided = true
+        }
+        platform.y += platform.currentGravity
+        if (collisionDetection(bottom, platform)) {
+            app.stage.removeChild(platform)
+        }
+    })
 
+    player.y += player.currentGravity
+    processUserInput()
+
+}
+
+function generatePlatformsOnCollision(collided) {
+    if (!collided) {
+        if (app.view.width / 2 > player.x) {
+            createPlatform(player.x - 300, player.y - 300)
+        } else {
+            createPlatform(player.x + 300, player.y - 300)
+        }
+    }
+}
+
+function createPlatform(x, y) {
+    //temp
+    let newPlatform = new PIXI.Graphics()
+    newPlatform.beginFill(0xffffff)
+    newPlatform.lineStyle(3, 0xcccccc, 1)
+    newPlatform.drawRect(x, y, 250, 40)
+    newPlatform.endFill()
+    app.stage.addChild(newPlatform)
+    newPlatform.currentGravity = 0
+    newPlatform.collided = false
+    platforms.set(platforms.size, newPlatform)
 }
 
 function processUserInput() {
     if (inputStore["87"]) {//W
-        player.y -= 100
+        player.y -= 150
         inputStore["87"] = false
+        player.currentGravity = GRAVITY
     }
 
     if (inputStore["65"]) {//A
@@ -98,9 +125,6 @@ function collisionDetection(a, b) {
 
 function movePlayer(e) {
     let pos = e.data.global
-
-    redSquare.x = pos.x
-    redSquare.y = pos.y
 }
 
 function keyDown(e) {
