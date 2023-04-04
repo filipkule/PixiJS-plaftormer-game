@@ -9,10 +9,17 @@ app.stage.on('pointermove', movePlayer)
 
 const BOX_SIZE = 128
 const GRAVITY = 0.5
+const PLAYER_GRAVITY = 1
+const PLATFORM_DISTANCE = 200
+const START_POSITION = { x: 475, y: 500 }
+
+let score = -1
 
 let inputStore = {}
 let platforms = new Map()
 let currentPlatform = null
+let platformsGravity = 0
+let playerGrounded = false
 
 let bottom = new PIXI.Graphics()
 bottom.beginFill(0x89CFF0)
@@ -27,91 +34,108 @@ app.stage.addChild(bottom)
 let player = PIXI.Sprite.from('player.png')
 app.stage.addChild(player)
 player.x = app.view.width - 700
-player.currentGravity = GRAVITY
+player.y = app.view.height - 300
+player.currentGravity = PLAYER_GRAVITY
 
-let start = new PIXI.Graphics()
-start.beginFill(0xffffff)
-start.lineStyle(3, 0xcccccc, 1)
-start.drawRect(475, 500,
-    250,
-    40
-)
-start.endFill()
-
-app.stage.addChild(start)
-start.currentGravity = 0
-start.collided = false
-currentPlatform = start
-platforms.set(0, start)
-
-
+initialPlatforms()
 
 function game() {
+    player.y += player.currentGravity
     if (collisionDetection(bottom, player)) {
         app.stage.removeChild(player) //TODO: game over, try again
     }
     platforms.forEach(platform => {
         if (collisionDetection(player, platform)) {
-            platform.currentGravity = GRAVITY
+            platformsGravity = GRAVITY
             currentPlatform = platform
             generatePlatformsOnCollision(platform.collided)
             platform.collided = true
+            player.currentGravity = GRAVITY
+            playerGrounded = true
+            score++
         }
-        platform.y += platform.currentGravity
+        platform.y += platformsGravity
+
         if (collisionDetection(bottom, platform)) {
-            app.stage.removeChild(platform)
+            app.stage.removeChild(platform)//TODO: splice platforms
+            platforms.delete(platform.id)
+            console.log('platform size', platforms)
         }
     })
-
-    player.y += player.currentGravity
     processUserInput()
 
 }
 
 function generatePlatformsOnCollision(collided) {
     if (!collided) {
-        if (app.view.width / 2 > player.x) {
-            createPlatform(player.x - 300, player.y - 300)
+        if (score % 2 == 0) {
+            createPlatform(app.view.width / 2 - 150, -100)// TODO: This is just a POC. Make the platforms not dependable on player at all.
         } else {
-            createPlatform(player.x + 300, player.y - 300)
+            createPlatform(app.view.width / 2 + 150, -100)
         }
     }
 }
 
 function createPlatform(x, y) {
-    //temp
     let newPlatform = new PIXI.Graphics()
     newPlatform.beginFill(0xffffff)
     newPlatform.lineStyle(3, 0xcccccc, 1)
-    newPlatform.drawRect(x, y, 250, 40)
+    newPlatform.drawRect(x, y, 250, 15)
     newPlatform.endFill()
     app.stage.addChild(newPlatform)
-    newPlatform.currentGravity = 0
+    newPlatform.currentGravity = GRAVITY
     newPlatform.collided = false
-    platforms.set(platforms.size, newPlatform)
+    newPlatform.id = platforms.size
+    platforms.set(newPlatform.id, newPlatform)
+}
+
+function initialPlatforms() {
+    let start = new PIXI.Graphics()
+    start.beginFill(0xffffff)
+    start.lineStyle(3, 0xcccccc, 1)
+    start.drawRect(START_POSITION.x, START_POSITION.y, 250, 15)
+    start.endFill()
+    app.stage.addChild(start)
+    start.currentGravity = 0
+    start.collided = false
+    currentPlatform = start
+    platforms.set(0, start)
+
+    for (let i = 1; i < 4; i++) {
+        if (i % 2 == 0) {
+            createPlatform(START_POSITION.x + 150, START_POSITION.y - i * PLATFORM_DISTANCE)
+        } else {
+            createPlatform(START_POSITION.x - 150, START_POSITION.y - i * PLATFORM_DISTANCE)
+        }
+    }
 }
 
 function processUserInput() {
-    if (inputStore["87"]) {//W
-        player.y -= 150
+    if (inputStore["87"] && playerGrounded) {//W
+        player.currentGravity = PLAYER_GRAVITY
+        player.y -= 170
         inputStore["87"] = false
-        player.currentGravity = GRAVITY
-    }
-
-    if (inputStore["65"]) {//A
-        player.x -= 5
-        inputStore["65"] = false
+        processLeftOrRightInput()
+        playerGrounded = false
     }
 
     if (inputStore["83"]) {//S
-        player.y += 100
+        player.y += 30
         inputStore["83"] = false
+        processLeftOrRightInput()
+    }
+
+    processLeftOrRightInput()
+}
+
+function processLeftOrRightInput() {
+    if (inputStore["65"]) {//A
+        player.x -= 6
     }
 
     if (inputStore["68"]) {//D
-        player.x += 5
-        inputStore["68"] = false
-    }
+        player.x += 6
+    }    
 }
 
 function collisionDetection(a, b) {
@@ -128,11 +152,9 @@ function movePlayer(e) {
 }
 
 function keyDown(e) {
-    console.log(e.keyCode)
     inputStore[e.keyCode] = true
 }
 
 function keyUp(e) {
-    console.log(e.keyCode)
     inputStore[e.keyCode] = false
 }
