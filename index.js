@@ -8,9 +8,9 @@ app.stage.interactive = true
 app.stage.on('pointermove', movePlayer)
 
 const BOX_SIZE = 128
-const GRAVITY = 0.5
-const PLAYER_GRAVITY = 1
-const PLATFORM_DISTANCE = 200
+const GRAVITY = 0.3
+const PLAYER_GRAVITY = 0.5
+const PLATFORM_DISTANCE = 150
 const START_POSITION = { x: 475, y: 500 }
 
 let score = -1
@@ -85,7 +85,7 @@ function createPlatform(x, y) {
     app.stage.addChild(newPlatform)
     newPlatform.currentGravity = GRAVITY
     newPlatform.collided = false
-    newPlatform.id = platforms.size
+    newPlatform.id = Math.random() * 10000
     platforms.set(newPlatform.id, newPlatform)
 }
 
